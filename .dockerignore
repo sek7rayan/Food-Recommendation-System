@@ -1,0 +1,7 @@
+*.pkl
+*.csv
+*.ipynb
+__pycache__/
+*.log
+.env
+.git
