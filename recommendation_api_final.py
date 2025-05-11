@@ -69,7 +69,6 @@ food['Name_clean'] = food['Name'].str.strip().str.lower()
 indices = pd.Series(food.index, index=food['Name_clean']).drop_duplicates()
 
 # Calcul des similarités
-cosine_sim = util.pytorch_cos_sim(bert_embeddings, bert_embeddings).cpu().numpy()
 
 print("✅ Embeddings et données chargés avec succès")
 
