@@ -25,7 +25,7 @@ def load_model():
 
         import urllib.request
         import pickle
-        from sentence_transformers import SentenceTransformer
+        import numpy as np
 
         def download_if_missing(file_path, url):
             if not os.path.exists(file_path):
