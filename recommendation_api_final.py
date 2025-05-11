@@ -13,6 +13,38 @@ from dotenv import load_dotenv
 import os
 import psycopg2
 
+bert_model = None
+bert_embeddings = None
+food = None
+def load_model():
+    global bert_model, bert_embeddings, food, indices
+    if bert_model is None or bert_embeddings is None or food is None:
+        print("📦 Chargement de food_dataframe.pkl et bert_embeddings.pkl...")
+
+        import urllib.request
+        import pickle
+        from sentence_transformers import SentenceTransformer
+
+        def download_if_missing(file_path, url):
+            if not os.path.exists(file_path):
+                print(f"⬇️ Téléchargement de {file_path}...")
+                urllib.request.urlretrieve(url, file_path)
+                print(f"✅ {file_path} téléchargé.")
+
+        download_if_missing("bert_embeddings.pkl", "https://drive.google.com/uc?export=download&id=1yxIukVxwUuyuJj7bpp-ChPAEKd_tCTva")
+        download_if_missing("food_dataframe.pkl", "https://drive.google.com/uc?export=download&id=1uR3OtKd4fHQMHjepBFdVA42ouCMJ0RuS")
+
+        bert_model = SentenceTransformer('all-MiniLM-L6-v2')
+        with open("bert_embeddings.pkl", "rb") as f:
+            bert_embeddings = pickle.load(f)
+
+        food = pd.read_pickle("food_dataframe.pkl")
+        food['Name_clean'] = food['Name'].str.strip().str.lower()
+        indices = pd.Series(food.index, index=food['Name_clean']).drop_duplicates()
+
+        print("✅ Embeddings et modèle chargés avec succès")
+
+
 print("🔥 DÉMARRAGE API — version debug active")
 
 
@@ -41,41 +73,29 @@ ratings = pd.read_sql('SELECT id_client AS "User_ID", id_plat AS "Food_ID", nb_e
 
 # Chargement et préparation des données
 
-import urllib.request
-import pickle
-from sentence_transformers import SentenceTransformer, util
+# import urllib.request
+# import pickle
+# from sentence_transformers import SentenceTransformer, util
 
-def download_if_missing(file_path, url):
-    if not os.path.exists(file_path):
-        print(f"⬇️ Téléchargement de {file_path}...")
-        urllib.request.urlretrieve(url, file_path)
-        print(f"✅ {file_path} téléchargé.")
+# def download_if_missing(file_path, url):
+#     if not os.path.exists(file_path):
+#         print(f"⬇️ Téléchargement de {file_path}...")
+#         urllib.request.urlretrieve(url, file_path)
+#         print(f"✅ {file_path} téléchargé.")
 
-download_if_missing("bert_embeddings.pkl", "https://drive.google.com/uc?export=download&id=1yxIukVxwUuyuJj7bpp-ChPAEKd_tCTva")
-download_if_missing("food_dataframe.pkl", "https://drive.google.com/uc?export=download&id=1uR3OtKd4fHQMHjepBFdVA42ouCMJ0RuS")
+# download_if_missing("bert_embeddings.pkl", "https://drive.google.com/uc?export=download&id=1yxIukVxwUuyuJj7bpp-ChPAEKd_tCTva")
+# download_if_missing("food_dataframe.pkl", "https://drive.google.com/uc?export=download&id=1uR3OtKd4fHQMHjepBFdVA42ouCMJ0RuS")
 
-bert_model = SentenceTransformer('all-MiniLM-L6-v2')
+# bert_model = SentenceTransformer('all-MiniLM-L6-v2')
 
-print("📦 Chargement de food_dataframe.pkl et bert_embeddings.pkl...")
+# print("📦 Chargement de food_dataframe.pkl et bert_embeddings.pkl...")
 
-# Charger les fichiers .pkl générés localement
-with open("bert_embeddings.pkl", "rb") as f:
-    bert_embeddings = pickle.load(f)
+# with open("bert_embeddings.pkl", "rb") as f:
+#     bert_embeddings = pickle.load(f)
 
-food = pd.read_pickle("food_dataframe.pkl")
-
-# Nettoyage et prétraitement
-food['Name_clean'] = food['Name'].str.strip().str.lower()
-indices = pd.Series(food.index, index=food['Name_clean']).drop_duplicates()
-
-# Calcul des similarités
-
-print("✅ Embeddings et données chargés avec succès")
-
-
-# 🔧 Nettoyage des noms pour une correspondance fiable
-food['Name_clean'] = food['Name'].str.strip().str.lower()
-indices = pd.Series(food.index, index=food['Name_clean']).drop_duplicates()
+# food = pd.read_pickle("food_dataframe.pkl")
+# food['Name_clean'] = food['Name'].str.strip().str.lower()
+# indices = pd.Series(food.index, index=food['Name_clean']).drop_duplicates()
 
 
 # Collaborative Filtering Setup
@@ -93,6 +113,8 @@ knn.fit(csr_matrix(rating_matrix.values))
 
 @app.route('/hybrid_recommend', methods=['POST'])
 def hybrid_recommend():
+    load_model()
+
     data = request.json
     user_id = int(data.get('user_id', -1))
     input_plats = data.get('plats', [])
