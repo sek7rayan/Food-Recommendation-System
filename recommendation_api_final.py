@@ -113,7 +113,11 @@ def hybrid_recommend():
           if isinstance(idx, (pd.Series, np.ndarray, list)):
             idx = idx[0]
 
-          row = cosine_sim[idx]
+          plat_feature = food.iloc[idx]['C_Type'] + ' ' + food.iloc[idx]['Ingredient']
+          plat_feature = plat_feature.strip().lower()
+          query_embedding = bert_model.encode(plat_feature, convert_to_tensor=True)
+          row = util.pytorch_cos_sim(query_embedding, bert_embeddings).squeeze().cpu().numpy()
+
           print(f"📏 Shape brute de cosine_sim[{idx}] = {getattr(row, 'shape', 'N/A')}")
 
         # 🔄 Flatten si nécessaire (3D, 2D...)
