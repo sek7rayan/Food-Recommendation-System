@@ -7,5 +7,4 @@ scipy
 gunicorn
 psycopg2-binary
 python-dotenv
-sentence-transformers
 psutil

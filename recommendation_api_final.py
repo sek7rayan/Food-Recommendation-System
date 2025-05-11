@@ -1,14 +1,15 @@
 from flask import Flask, request, jsonify
 import pandas as pd
 import numpy as np
-from sentence_transformers import SentenceTransformer
-from sentence_transformers import util
+
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse import csr_matrix
 from sklearn.neighbors import NearestNeighbors
 import re
 import string
 import psutil
+import pickle
+
 
 from dotenv import load_dotenv
 import os
@@ -35,18 +36,17 @@ def load_model():
         download_if_missing("bert_embeddings.pkl", "https://drive.google.com/uc?export=download&id=1yxIukVxwUuyuJj7bpp-ChPAEKd_tCTva")
         download_if_missing("food_dataframe.pkl", "https://drive.google.com/uc?export=download&id=1uR3OtKd4fHQMHjepBFdVA42ouCMJ0RuS")
 
-        bert_model = SentenceTransformer('all-MiniLM-L6-v2')
-        print_memory_usage("après chargement du modèle BERT")
-        with open("bert_embeddings.pkl", "rb") as f:
-            bert_embeddings = pickle.load(f)
-            print_memory_usage("après chargement des embeddings")
-
         food = pd.read_pickle("food_dataframe.pkl")
-        print_memory_usage("après chargement des embeddings")
         food['Name_clean'] = food['Name'].str.strip().str.lower()
         indices = pd.Series(food.index, index=food['Name_clean']).drop_duplicates()
 
-        print("✅ Embeddings et modèle chargés avec succès")
+# Chargement des embeddings compressés (déjà encodés)
+        bert_embeddings = np.load("bert_embeddings.npz")["embeddings"]  # shape: (N, D), dtype: float16
+
+        print_memory_usage("après chargement des embeddings (npz)")
+
+
+       
 def print_memory_usage(message=""):
     process = psutil.Process(os.getpid())
     mem_mb = process.memory_info().rss / (1024 ** 2)
@@ -111,6 +111,7 @@ ratings = pd.read_sql('SELECT id_client AS "User_ID", id_plat AS "Food_ID", nb_e
 rating_matrix = ratings.pivot_table(index='User_ID', columns='Food_ID', values='Rating').fillna(0)
 knn = NearestNeighbors(metric='cosine', algorithm='brute')
 knn.fit(csr_matrix(rating_matrix.values))
+print_memory_usage("après entraînement KNN")
 
 # --- Fonction pour afficher les utilisateurs similaires
 
@@ -122,6 +123,7 @@ knn.fit(csr_matrix(rating_matrix.values))
 @app.route('/hybrid_recommend', methods=['POST'])
 def hybrid_recommend():
     load_model()
+    print_memory_usage("pendant recommandation hybride")
 
     data = request.json
     user_id = int(data.get('user_id', -1))
@@ -144,8 +146,9 @@ def hybrid_recommend():
 
           plat_feature = food.iloc[idx]['C_Type'] + ' ' + food.iloc[idx]['Ingredient']
           plat_feature = plat_feature.strip().lower()
-          query_embedding = bert_model.encode(plat_feature, convert_to_tensor=True)
-          row = util.pytorch_cos_sim(query_embedding, bert_embeddings).squeeze().cpu().numpy()
+          query_embedding = bert_embeddings[idx].reshape(1, -1)  # float16
+          row = cosine_similarity(query_embedding, bert_embeddings)[0]  # np.array de shape (400,)
+
 
           print(f"📏 Shape brute de cosine_sim[{idx}] = {getattr(row, 'shape', 'N/A')}")
 

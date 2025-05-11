@@ -1,7 +1,7 @@
 import pandas as pd
 import pickle
 from sentence_transformers import SentenceTransformer
-
+import numpy as np
 # Charger tes plats depuis PostgreSQL ou un CSV
 import psycopg2
 from dotenv import load_dotenv
@@ -32,13 +32,20 @@ food['features'] = food['C_Type'].fillna('') + ' ' + food['Ingredient'].fillna('
 food['features'] = food['features'].str.strip().str.lower()
 
 # Encoder avec BERT
+# Encoder avec BERT
 print("🚀 Encodage des features avec BERT")
 model = SentenceTransformer('all-MiniLM-L6-v2')
 bert_embeddings = model.encode(food['features'].tolist(), convert_to_tensor=True)
 
-# Sauvegarde
-with open("bert_embeddings.pkl", "wb") as f:
-    pickle.dump(bert_embeddings, f)
+# Affichage de la vraie shape
+print(f"✅ Shape finale des embeddings : {bert_embeddings.shape}")
 
+# Convertir en float16 pour réduire la taille mémoire
+bert_embeddings_np = bert_embeddings.cpu().numpy().astype("float16")
+
+# Sauvegarde compressée
+np.savez_compressed("bert_embeddings.npz", embeddings=bert_embeddings_np)
+
+# Sauvegarde des plats
 food.to_pickle("food_dataframe.pkl")
-print("✅ Sauvegarde terminée : bert_embeddings.pkl + food_dataframe.pkl")
+print("✅ Sauvegarde terminée : bert_embeddings.npz + food_dataframe.pkl")
