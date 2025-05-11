@@ -8,6 +8,7 @@ from scipy.sparse import csr_matrix
 from sklearn.neighbors import NearestNeighbors
 import re
 import string
+import psutil
 
 from dotenv import load_dotenv
 import os
@@ -35,14 +36,21 @@ def load_model():
         download_if_missing("food_dataframe.pkl", "https://drive.google.com/uc?export=download&id=1uR3OtKd4fHQMHjepBFdVA42ouCMJ0RuS")
 
         bert_model = SentenceTransformer('all-MiniLM-L6-v2')
+        print_memory_usage("après chargement du modèle BERT")
         with open("bert_embeddings.pkl", "rb") as f:
             bert_embeddings = pickle.load(f)
+            print_memory_usage("après chargement des embeddings")
 
         food = pd.read_pickle("food_dataframe.pkl")
+        print_memory_usage("après chargement des embeddings")
         food['Name_clean'] = food['Name'].str.strip().str.lower()
         indices = pd.Series(food.index, index=food['Name_clean']).drop_duplicates()
 
         print("✅ Embeddings et modèle chargés avec succès")
+def print_memory_usage(message=""):
+    process = psutil.Process(os.getpid())
+    mem_mb = process.memory_info().rss / (1024 ** 2)
+    print(f"🧠 RAM utilisée {message}: {mem_mb:.2f} MB")
 
 
 print("🔥 DÉMARRAGE API — version debug active")
