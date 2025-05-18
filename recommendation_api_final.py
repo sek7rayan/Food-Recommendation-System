@@ -234,7 +234,7 @@ def hybrid_recommend():
     return jsonify({
         "content_based": content_recs,
         "collaborative": collab_recs,
-        "hybrid_recommendations": hybrid[:10]
+        "hybrid_recommendations": hybrid[:15]
     })
 
 
