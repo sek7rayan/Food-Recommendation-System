@@ -237,7 +237,7 @@ def hybrid_recommend():
         "hybrid_recommendations": hybrid[:15]
     })
 
-
+# --- Fonction pour afficher les utilisateurs similaires
 
 @app.route('/ping', methods=['GET'])
 def ping():
